@@ -1,11 +1,12 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import RAPIER from "@dimforge/rapier3d-compat";
 import vertexShader from "./shaders/vertexShader.glsl";
 import fragmentShader from "./shaders/fragmentShader.glsl";
-import { getRandomColor } from "./utils.js";
-import { generateRandomGeometry } from "./generateGeo.js";
-
+import gsap from "gsap";
+import texture1Pic from './post1.jpeg'
+import texture2Pic from './post2.jpeg'
+import texture3Pic from './post3.jpeg'
+import texture4Pic from './post4.jpeg'
 class Sketch {
   constructor(containerId) {
     this.container = document.getElementById(containerId);
@@ -17,24 +18,67 @@ class Sketch {
     this.scene = this.createScene();
     this.camera = this.createCamera();
     this.renderer = this.createRenderer();
-    this.controls = this.addOrbitControls();
-    this.gravity = null;
-    this.world = null;
-    this.RAPIER = null;
-    this.cube = this.createCube();
-    this.clock;
-
+    this.time = 0;
+    // this.controls = this.addOrbitControls();
     this.mousePos = new THREE.Vector2(0, 0);
+    this.scrollProgress = 0;
+    this.count = 6;
+    this.lethForOne = 800;
 
     // Запускаем инициализацию
     this.init();
+
+    const containerTL = gsap.timeline({
+      paused: true
+    });
+    containerTL.from(this.container, {
+      opacity: 0,
+      duration: 0.3,
+      ease: 'power1.out',
+    });
+    containerTL.reverse();
+
+    const toggleContainerOpacity = () => {
+      containerTL.reversed(!containerTL.reversed());
+    }
+
+    this.tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: this.container,
+        start: 'top top',
+        end: `+=${this.count * this.lethForOne}`,
+        scrub: 1,
+        pin: true,
+        markers: false,
+        onToggle: () => {
+          toggleContainerOpacity();
+        },
+        onUpdate: (self) => {
+          const udaptedVal = self.progress * -8;
+          this.scrollProgress = udaptedVal;
+          console.log('scrollProgress', this.scrollProgress);
+        }
+      }
+    })
+    gsap.set(this.container, {
+      opacity: 0,
+    })
+    gsap.from(this.meshes[0].mesh.scale, {
+      x: 0,
+      y: 0,
+      duration: 0.5,
+      ease: 'power1.out',
+      scrollTrigger: {
+        trigger: this.container,
+        start: 'top top',
+        end: '+=5',
+        scrub: 1,
+        markers: false,
+      }
+    })
   }
 
   async init() {
-    // Инициализируем физику и дожидаемся завершения
-    // await this.initPhysics();
-
-    this.clock = new THREE.Clock();
     // Добавляем объекты на сцену
     this.addObjects();
 
@@ -51,24 +95,26 @@ class Sketch {
   // Создание сцены
   createScene() {
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x686868);
+    scene.background = new THREE.Color(0x242424);
     return scene;
   }
 
   // Создание камеры
   createCamera() {
-    const fov = 75;
+    const fov = 70;
     const aspect = this.width / this.height;
     const near = 0.1;
-    const far = 1000;
+    const far = 10;
     const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-    camera.position.set(3, 3, 3);
+    camera.position.set(0, 0, 1.3);
     return camera;
   }
 
   // Создание рендера
   createRenderer() {
-    const renderer = new THREE.WebGLRenderer();
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+    });
     renderer.setSize(this.width, this.height);
 
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -83,39 +129,9 @@ class Sketch {
     return renderer;
   }
 
-  async initPhysics() {
-    this.RAPIER = await RAPIER.init();
-    this.gravity = { x: 0.0, y: 0, z: 0.0 };
-    this.world = new RAPIER.World(this.gravity);
-  }
-
   addLight() {
     const hemiLight = new THREE.HemisphereLight(0x099ff, 0xaa5500);
     this.scene.add(hemiLight);
-
-    // this.scene.fog = new THREE.FogExp2(0x000000, 0.3);
-  }
-
-  createCube() {
-    const color = getRandomColor();
-    const geo = new THREE.BoxGeometry(1, 1, 1);
-
-    this.material = new THREE.ShaderMaterial({
-      extensions: {
-        derivatives: "extension GL_OES_standard_derivatives : enable",
-      },
-      side: THREE.DoubleSide,
-      uniforms: {
-        time: { value: 0 },
-      },
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      fragmentShader: fragmentShader,
-      vertexShader: vertexShader,
-    });
-    const mesh = new THREE.Mesh(geo, this.material);
-    mesh.position.set(0,0,0)
-    return mesh;
   }
 
   // Добавление OrbitControls
@@ -123,8 +139,45 @@ class Sketch {
     return new OrbitControls(this.camera, this.renderer.domElement);
   }
 
+  getMaterial() {
+    const arrOfPics = [texture1Pic, texture2Pic, texture3Pic, texture4Pic];
+
+    // get radmon pic from array
+    const randomPic = arrOfPics[Math.floor(Math.random() * arrOfPics.length)];
+    let texture1 = new THREE.TextureLoader().load(randomPic);
+    texture1.colorSpace = THREE.SRGBColorSpace;
+    return new THREE.ShaderMaterial({
+      extensions: {
+        derivatives: "extension GL_OES_standard_derivatives : enable",
+      },
+      side: THREE.DoubleSide,
+      uniforms: {
+        time: { value: 0 },
+        uTexture: { value: texture1 },
+        progress: { value: 0 },
+        resolution: { value: new THREE.Vector4() },
+      },
+      transparent: true,
+      wireframe: false,
+      fragmentShader: fragmentShader,
+      vertexShader: vertexShader,
+    });
+  }
+
   addObjects() {
-    this.scene.add(this.cube);
+    this.geo = new THREE.PlaneGeometry(2, 1, 100, 100);
+
+
+    this.meshes = [];
+    for (let i = 0; i < this.count; i++) {
+      let mesh = new THREE.Mesh(this.geo, this.getMaterial());
+      this.meshes.push({
+        mesh: mesh,
+        progress: 0,
+        pos: 0.8 * i,
+      });
+      this.scene.add(mesh);
+    }
   }
 
   // Обработчик изменения размеров окна
@@ -151,21 +204,16 @@ class Sketch {
 
   // Анимация
   animate() {
+    this.time += 0.05;
+    this.meshes.forEach((mesh) => {
+      mesh.mesh.material.uniforms.progress.value = mesh.pos + this.scrollProgress;
+    })
+
+    // this.controls.update();
+
     requestAnimationFrame(this.animate.bind(this));
-
-    const delta = this.clock.getDelta();
-
-    // this.cube.material.uniforms.time.value = delta;
-
-    this.cube.rotation.z += delta;
-    this.cube.rotation.y += delta;
-    this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
 }
 
-// Запуск инициализации, передаем id элемента
 export default Sketch;
-
-// Чтобы запустить, просто нужно создать экземпляр класса
-// const sketch = new Sketch('canvas');

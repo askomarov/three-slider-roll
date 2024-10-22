@@ -28,6 +28,10 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  overscroll-behavior: none;
+  background-color: #242424;
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 h1 {
@@ -59,4 +63,22 @@ h1 {
   left: 2rem;
   z-index: 2;
   color: tomato;
+}
+
+p {
+  margin: 0;
+}
+
+.spacer {
+  min-height: 600px;
+}
+.footer {
+  padding: 1rem 2rem;
+
+  color: #fff;
+  font-size: clamp(1rem, 5vw, 3rem);
+
+   &.dark {
+    background-color: #000;
+  }
 }

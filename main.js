@@ -1,5 +1,9 @@
 import "./style.css";
 import Sketch from "./three";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 console.log("hello js asd");
 
